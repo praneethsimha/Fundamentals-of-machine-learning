@@ -1,0 +1,138 @@
+---
+title: "FML Assignment 2"
+author: "Praneeth Simha"
+date: "2023-02-18"
+output:
+  word_document: default
+  html_document: default
+---
+```{r}
+#Loading the packages 
+library(caret)
+library(ISLR)
+library(dplyr)
+library(class)
+```
+
+```{r}
+UniversalBank <- read.csv("C:/Users/ADMIN/Downloads/UniversalBank (1).csv")
+```
+
+
+```{r}
+#Performing a K-NN classification with all attributes except ID and ZIP code.
+UniversalBank$ID <- NULL
+UniversalBank$ZIP.Code <- NULL
+summary(UniversalBank)
+UniversalBank$Personal.Loan =  as.factor(UniversalBank$Personal.Loan)
+```
+```{r}
+#Creating dummy variables for education: separate the 3 levels of education into 3 separate columns. You can name these newly created columns as specified:“Education_1", "Education_2", "Education_3"
+education_1 <- ifelse(UniversalBank$Education==1 ,1,0)
+
+education_2 <- ifelse(UniversalBank$Education==2 ,1,0)
+
+education_3 <- ifelse(UniversalBank$Education==3 ,1,0)
+
+```
+
+```{r}
+unibank<-data.frame(Age=UniversalBank$Age,Experience=UniversalBank$Experience,Income=UniversalBank$Income,Family=UniversalBank$Family,CCAvg=UniversalBank$CCAvg, education_1=education_1,education_2=education_2,education_3=education_3,Personal.Loan=UniversalBank$Personal.Loan,Mortgage=UniversalBank$Mortgage,Securities.Account=UniversalBank$Securities.Account,CD.Account=UniversalBank$CD.Account,Online=UniversalBank$Online,CreditCard=UniversalBank$CreditCard)
+head(unibank)
+```
+
+```{r}
+#Dividing into training and validation
+Model.normalise <- preProcess(UniversalBank[, -8],method = c("center", "scale"))
+summary(UniversalBank)
+UniversalBank.normalise <- predict(Model.normalise,UniversalBank)
+summary(UniversalBank.normalise)
+
+Index_Train <- createDataPartition(UniversalBank$Personal.Loan, p = 0.6, list = FALSE)
+Train = UniversalBank.normalise[Index_Train,]
+validation = UniversalBank.normalise[-Index_Train,]
+```
+
+```{r}
+#QUESTION-1 
+#Prediction of data 
+
+library(FNN)
+to_Predict = data.frame(Age = 40, Experience = 10, Income = 84, Family = 2,
+                     CCAvg = 2, Education = 1, Mortgage = 0, Securities.Account =
+                       0, CD.Account = 0, Online = 1, CreditCard = 1)
+print(to_Predict)
+Predict.Normalise <- predict(Model.normalise,to_Predict)
+Predictions <- knn(train= as.data.frame(Train[,1:7,9:12]),
+                  test = as.data.frame(Predict.Normalise[,1:7,9:12]),
+                  cl= Train$Personal.Loan,
+                  k=1)
+```
+
+```{r}
+#QUESTION-2 Find the accuracy table.Pick the value of k that gives largest accuracy.
+set.seed(123)
+UniversalBank <- trainControl(method= "repeatedcv", number = 3, repeats = 2)
+searchGrid = expand.grid(k=1:10)
+knn.model = train(Personal.Loan~., data = Train, method = 'knn', tuneGrid = searchGrid,trControl = UniversalBank)
+knn.model
+#The value of k is 3.This is the value that has the largest accuracy 
+```
+
+
+
+```{r}
+#QUESTION-3 Finding again confusion matrix using the using the k 
+UniversalBank_prediction <- predict(knn.model,validation)
+confusionMatrix(UniversalBank_prediction,validation$Personal.Loan)
+#This matrix has a 94.5% accuracy.
+#This the confusion matrix for the validation data that results from using the best k.
+```
+
+
+
+
+
+```{r}
+#QUESTION-4 Consider the following customer: Age = 40, Experience = 10, Income = 84,Family = 2, Cc Avg = 2, Education_1 = 0, Education_2 = 1, Education_3 = 0,Mortgage = 0, Securities Account = 0, CD Account = 0, Online = 1 and Credit Card = 1. Classify the customer using the best k.
+ForPredictNorm = data.frame(Age = 40, Experience = 10, Income = 84, Family = 2,
+                              CCAvg = 2, Education = 1, Mortgage = 0,
+                              Securities.Account =0, CD.Account = 0, Online = 1,
+                              CreditCard = 1)
+ForPredictNorm = predict(Model.normalise, ForPredictNorm)
+predict(knn.model, ForPredictNorm)
+#It results in level 0,1
+```
+```{r}
+#QUESTION-5
+#Partitioning the data into three parts training,test and validation 
+Train_size = 0.5 #training(50%)
+Train_Index = createDataPartition(UniversalBank.normalise$Personal.Loan, p = 0.5, list = FALSE)
+Train = UniversalBank.normalise[Train_Index,]
+
+valid_size = 0.3 #validation(30%)
+Validation_Index = createDataPartition(UniversalBank.normalise$Personal.Loan, p = 0.3, list = FALSE)
+validation = UniversalBank.normalise[Validation_Index,]
+
+Test_size = 0.2 #Test Data(20%)
+Test_Index = createDataPartition(UniversalBank.normalise$Personal.Loan, p = 0.2, list = FALSE)
+Test = UniversalBank.normalise[Test_Index,]
+
+
+Trainingknn <- knn(train = Train[,-8], test = Train[,-8], cl = Train[,8], k =3)
+Validknn <- knn(train = Train[,-8], test = validation[,-8], cl = Train[,8], k =3)
+Testingknn <- knn(train = Train[,-8], test = Test[,-8], cl = Train[,8], k =3)
+
+confusionMatrix(Trainingknn, Train[,8])
+confusionMatrix(Validknn, validation[,8])
+confusionMatrix(Testingknn, Test[,8])
+#This KNN model has an accuracy of 0.968 
+#This KNN model's sensitivity is 0.9912
+#This KNN model's specificity is 0.7500
+
+```
+
+
+
+
+
