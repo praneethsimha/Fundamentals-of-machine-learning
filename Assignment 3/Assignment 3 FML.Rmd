@@ -1,0 +1,82 @@
+---
+title: "Assignment 3"
+author: "Praneeth Simha"
+date: "2023-03-05"
+output:
+  word_document: default
+  html_document: default
+---
+
+```{r}
+library("readr")
+library("dplyr")
+library("caret")
+library("tidyr")
+library("e1071")
+library("reshape2")
+library("pROC")
+library("naivebayes")
+```
+
+```{r}
+Unibank <- read.csv("C:/Users/ADMIN/Downloads/UniversalBank.csv")
+summary(Unibank)
+```
+```{r}
+#converting the predictors to factors
+head(Unibank)
+Unibank$Personal.Loan <- as.factor(Unibank$Personal.Loan)
+Unibank$Online <- as.factor(Unibank$Online)
+Unibank$CreditCard <- as.factor(Unibank$CreditCard)
+```
+```{r}
+#Partition the data into training (60%) and validation (40%) sets 
+set.seed(2022)
+training_data_index = createDataPartition(Unibank$Personal.Loan, p=.6, list = F) #60% training data
+training_data_df = Unibank[training_data_index,]
+validation_data_df = Unibank[-training_data_index,] #Validation Data
+```
+
+```{r}
+#Pivot tables 
+melt_Unibank = melt(training_data_df, id=c("CreditCard","Personal.Loan"), variable = "Online") #function melt() 
+dcast_Unibank = dcast(melt_Unibank, CreditCard+Personal.Loan~Online) #function cast()
+dcast_Unibank[,c(1:2,14)] 
+# CreditCard, Personal.Loan, Online DF
+```
+
+```{r}
+#Pivot tables having loan rows as function of online coloumns and remaining having loan rows as function of credit card 
+loan_melt_Unibank = melt(training_data_df, id=c("Personal.Loan"), variable = "Online")
+cc_melt_Unibank = melt(training_data_df, id=c("CreditCard"), variable = "Online")
+dcast_loan_Unibank = dcast(loan_melt_Unibank, Personal.Loan~Online)
+dcast_cc_Unibank = dcast(cc_melt_Unibank, CreditCard~Online)
+dcast_loan_Unibank[,c(1,13)]
+dcast_cc_Unibank[,c(1,14)]
+```
+
+```{r}
+#Calculate the following quantities: P(A | B), or the likelihood that A will occur given B. 
+table(training_data_df[,c(14,10)])
+table(training_data_df[,c(13,10)])
+table(training_data_df[c(10)])
+```
+
+```{r}
+#Running the naivebayes model on the data
+train.naive.bayes = training_data_df[,c(10,13:14)]
+naive.bayes = naiveBayes(Personal.Loan~., data=train.naive.bayes)
+naive.bayes
+```
+
+```{r}
+#Looking at the ROC curve and AUC value
+Naive <- naiveBayes(Personal.Loan~Online+CreditCard,data=training_data_df)
+ Naive
+
+ predlab <- predict(Naive,training_data_df,type = "raw")
+ head(predlab)
+ roc(training_data_df$Online,predlab[,2])
+ plot.roc(training_data_df$Online,predlab[,2])
+```
+
