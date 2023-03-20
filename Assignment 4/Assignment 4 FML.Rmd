@@ -1,0 +1,105 @@
+---
+title: "Assignment 4 FML"
+author: "Praneeth Simha"
+date: "2023-03-19"
+output:
+  word_document: default
+  html_document: default
+---
+#Importing the Dataset 
+```{r}
+Pharmaceuticals <- read.csv("C:/Users/ADMIN/Downloads/Pharmaceuticals.csv")
+summary(Pharmaceuticals)
+str(Pharmaceuticals)
+```
+
+
+```{r}
+library(readr)
+library(dplyr)
+library(caret)
+library(tidyverse)
+library(cluster)
+library(gridExtra)
+library(ggrepel)
+library(factoextra)
+library(flexclust)
+library(ggcorrplot)
+library(FactoMineR)
+```
+
+#A Use only the numerical variables (1 to 9) to cluster the 21 firms. Justify the various choices made in conducting the cluster analysis, such as weights for different variables, the specific clustering algorithm(s) used, the number of clusters formed, and so on. 
+
+#Removing the Null Values in the dataset and selecting the Numercial variables.
+```{r}
+colSums(is.na(Pharmaceuticals))
+row.names(Pharmaceuticals)<- Pharmaceuticals[,1]
+Pharmaceuticals_data_num<- Pharmaceuticals[, 3:11]
+head(Pharmaceuticals_data_num)
+```
+# Scaling and Normalisation the dataset.
+```{r}
+Pharmaceuticals_scale <- scale(Pharmaceuticals_data_num)
+head(Pharmaceuticals_scale)
+normal_data <- as.data.frame(scale(Pharmaceuticals_data_num))
+```
+# Computing K-means clustering  for different centers and Using multiple values of K and examine the differences in results
+```{r}
+kmeans_1 <- kmeans(Pharmaceuticals_scale, centers = 2, nstart = 30)
+kmeans_2<- kmeans(Pharmaceuticals_scale, centers = 5, nstart = 30)
+kmeans_3<- kmeans(Pharmaceuticals_scale, centers = 6, nstart = 30)
+Plot_1<-fviz_cluster(kmeans_1, data = Pharmaceuticals_scale)+ggtitle("k=2")
+plot_2<-fviz_cluster(kmeans_2, data = Pharmaceuticals_scale)+ggtitle("k=5")
+plot_3<-fviz_cluster(kmeans_3, data = Pharmaceuticals_scale)+ggtitle("k=6")
+grid.arrange(Plot_1,plot_2,plot_3, nrow = 3)
+```
+#so the recommanded number of clusters is k=2 i.e plot2
+# Estimating the  number of clusters
+```{r}
+fviz_nbclust(normal_data, FUNcluster = kmeans, method = "wss") + labs(subtitle = "Elbow Method")
+```
+# Silhouette Method is used in scaling the data to determine the number of clusters
+```{r}
+fviz_nbclust(normal_data,FUNcluster = kmeans,method = "silhouette")+labs(subtitle="Silhouette Method")
+```
+# Final analysis and Extracting results using 5 clusters and Visualize the results
+```{r}
+set.seed(300)
+final_Cluster<- kmeans(Pharmaceuticals_scale, 5, nstart = 25)
+print(final_Cluster)
+clusplot(Pharmaceuticals_scale,final_Cluster$cluster, color = TRUE, labels = 2,lines = 0)
+```
+
+#B  Interpret the clusters with respect to the numerical variables used in forming the clusters.
+#Cluster 1 - AHM,SGP,WYE,BMY,AZN, ABT, NVS, LLY ( lowest Market_Cap,lowest Beta,lowest PE_Ratio,highest Leverage,highest Rev_Growth.)
+#Cluster 2 - BAY, CHTT, IVX (lowest Rev_Growth,highest Beta and levearge,lowest Net_Profit_Margin)
+#Cluster 3 - WPI, MRX,ELN,AVE (lowest PE_Ratio,highest ROE,lowest ROA,lowest Net_Profit_Margin, highest Rev_Growth)
+#Cluster 4 - AGN, PHA (lowest Beta,lowest Asset_Turnover, Highest PE Ratio)
+#Cluster 5 - JNJ, MRK, PFE,GSK (Highest Market_Cap,ROE, ROA,Asset_Turnover Ratio and lowest Beta/PE Ratio)
+
+```{r}
+Pharmaceuticals_Cluster <- Pharmaceuticals[,c(12,13,14)]%>% mutate(clusters = final_Cluster$cluster)%>% arrange(clusters, ascending = TRUE)
+Pharmaceuticals_Cluster
+```
+#C Is there a pattern in the clusters with respect to the numerical variables (10 to 12)? 
+```{r}
+plot1<-ggplot(Pharmaceuticals_Cluster, mapping = aes(factor(clusters), fill=Median_Recommendation))+geom_bar(position = 'dodge')+labs(x ='No of clusters')
+plot2<- ggplot(Pharmaceuticals_Cluster, mapping = aes(factor(clusters),fill = Location))+geom_bar(position = 'dodge')+labs(x ='No of clusters')
+plot3<- ggplot(Pharmaceuticals_Cluster, mapping = aes(factor(clusters),fill = Exchange))+geom_bar(position = 'dodge')+labs(x ='No of clusters')
+plot4<- ggplot(Pharmaceuticals_Cluster, mapping = aes(factor(clusters), fill=Median_Recommendation)) + geom_bar(position = 'dodge') + labs(x='Clusters', y='Frequence')
+grid.arrange(plot1, plot2, plot3,plot4)  
+
+```
+#AS per the graph 
+
+#Cluster 1 :The Hold median is the highest in this cluster , which also contains separate Hold, Moderate Buy, Moderate Sell, and Strong Buy medians. They are listed on the NYSE and come from the US, UK, and Switzerland.
+
+#Cluster 2: Although the firms are evenly divided throughout AMEX, NASDAQ, and NYSE,  has a distinct Hold and Moderate Buy median, as well as a different count between the US and Germany.
+
+#Cluster 3: listed on the NYSE, has separate counts for France, Ireland, and the US, and has equal moderate buy and sell medians.
+
+#Cluster 4: dispersed throughout the US and UK, as well as being listed in, has the identical hold and moderate buy medians
+
+#Cluster 5: #solely listed on the NYSE, equally dispersed in the US and Canada, with Hold and Moderate Buy medians.
+
+
