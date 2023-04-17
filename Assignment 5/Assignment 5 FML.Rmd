@@ -1,0 +1,164 @@
+---
+title: "Assignment 5 FML"
+author: "Praneeth Simha"
+date: "2023-04-16"
+output:
+  word_document: default
+  html_document: default
+---
+
+```{r}
+library(cluster)
+library(dplyr)
+library(caret)
+library(dendextend)
+library(knitr)
+library(factoextra)
+library(readr)                                                              
+```
+#Importing the dataset
+```{r}
+Cereals <- read.csv("C:/Users/ADMIN/Downloads/Cereals.csv")
+```
+
+```{r}
+head(Cereals)
+```
+```{r}
+dim(Cereals)
+```
+#Omitting the NUll values
+```{r}
+Cereals <- na.omit(Cereals)
+dim(Cereals)
+head(Cereals)
+```
+#Creating a dataset with the Numeric Values
+```{r}
+df1<- data.frame(Cereals[,4:16])
+df2<- na.omit(df1)
+```
+
+#Normalizing the data
+```{r}
+df1 <- scale(df1)
+head(df1)
+```
+#Applying hierarchical clustering using Euclidean distance method.
+```{r}
+dist <- dist(df1, method= "euclidean")
+Hist_clust <- hclust(dist, method = "complete")
+```
+
+#Plotting of the dendogram
+```{r}
+plot(Hist_clust, cex = 0.7, hang = -1)
+```
+#Using Agnes function to perform clustering with single linkage, complete linkage average linkage and Ward.
+```{r}
+hc_single <- agnes(df1, method = "single")
+hc_complete <- agnes(df1, method = "complete")
+hc_average <- agnes(df1, method = "average")
+hc_ward <- agnes(df1, method ="ward")
+```
+
+#Determining the best method
+```{r}
+print(hc_single$ac)
+print(hc_complete$ac)
+print(hc_average$ac)
+print(hc_ward$ac)
+
+#The ward method is the best as compared to the other methods with a value of 0.9046042
+```
+#Choosing the number of clusters
+```{r}
+pltree(hc_ward, cex = 0.6, hang = -1, main = "Dendrogram of agnes") 
+df2_5<-cutree(hc_ward, k = 5)
+rect.hclust(hc_ward , k=5, border = 2:7)
+subGroup <- cutree(hc_ward, k=5)
+```
+
+```{r}
+df2_5 <- as.data.frame(cbind(df2_5,subGroup))
+fviz_cluster(list(data=df2_5, cluster = subGroup))
+```
+#Creating Partitions
+```{r}
+set.seed(123)
+df_A <- df2 [1:55,]
+df_B <- df2 [56:74,]
+```
+
+#Performing Hierarchial Clustering,considering k = 5.
+```{r}
+Ag_single <- agnes(scale(df_A), method = "single")
+Ag_complete <- agnes(scale(df_A), method = "complete")
+Ag_average <- agnes(scale(df_A), method = "average")
+Ag_ward <- agnes(scale(df_A), method = "ward")
+
+```
+
+```{r}
+cbind(single= Ag_single$ac , complete=Ag_complete$ac , average= Ag_average$ac , ward= Ag_ward$ac)
+```
+```{r}
+pltree(Ag_ward, cex = 0.6, hang = -1, main = "Dendogram of Agnes Using Ward")
+rect.hclust(Ag_ward, k = 5, border = 2:7)
+cut2 <- cutree(Ag_ward, k = 5)
+```
+#Calculating the centroids.
+```{r}
+Result <- as.data.frame(cbind(df_A, cut2))
+Result[Result$cut2==1,]
+
+Centroid1 <- colMeans(Result[Result$cut2==1,])
+Result[Result$cut2==2,]
+
+Centroid2 <- colMeans(Result[Result$cut2==2,])
+Result[Result$cut2==3,]
+
+Centroid3 <- colMeans(Result[Result$cut2==3,])
+Result[Result$cut2==4,]
+
+Centroid4 <- colMeans(Result[Result$cut2==4,])
+Centroids <- rbind(Centroid1, Centroid2, Centroid3, Centroid4)
+x2 <- as.data.frame(rbind(Centroids[,-14], df_B))
+```
+#Calculating the Distance.
+```{r}
+Dist1 <- get_dist(x2)
+
+Matrix <- as.matrix(Dist1)
+
+data.frame <- data.frame(data=seq(1,nrow(df_B),1), Clusters = rep(0,nrow(df_B)))
+
+for(i in 1:nrow(df_B)) 
+{data.frame[i,2] <- which.min(Matrix[i+4, 1:4])}
+data.frame
+cbind(df2$SubGroup[51:74], data.frame$Clusters)
+table(df2$SubGroup[51:74] == data.frame$Clusters)
+
+#We can conclude that it is partially stable.
+```
+#Clustering Healthy Cereals.
+```{r}
+Healthy_Cereals <- Cereals
+Healthy_Cereals_na <- na.omit(Healthy_Cereals)
+Clusthealthy <- cbind(Healthy_Cereals_na, subGroup)
+                  
+Clusthealthy[Clusthealthy$subGroup==1,]
+Clusthealthy[Clusthealthy$subGroup==2,]
+Clusthealthy[Clusthealthy$subGroup==3,]
+Clusthealthy[Clusthealthy$subGroup==4,]
+```
+#Mean ratings to determine the best cluster.
+```{r}
+mean(Clusthealthy[Clusthealthy$subGroup==1,"rating"])
+mean(Clusthealthy[Clusthealthy$subGroup==2,"rating"])
+mean(Clusthealthy[Clusthealthy$subGroup==3,"rating"])
+mean(Clusthealthy[Clusthealthy$subGroup==4,"rating"])
+
+#As cluster 1 has the greatest value, it can be concluded that it should be chosen. In light of this, cluster 1 can be regarded as a Healthy Cluster.
+```
+
