@@ -1,0 +1,161 @@
+---
+title: "FML Final Exam"
+author: "Praneeth Simha"
+date: "2023-05-04"
+output:
+  html_document: default
+  word_document: default
+---
+
+```{r}
+library(tidyverse)
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+library(ggthemes)
+```
+#Installing the packages 
+```{r}
+library(readxl)
+PUDL <- read.csv("C:/Users/ADMIN/Downloads/PUDL.csv")
+```
+#loading the real time dataset 
+```{r}
+# Check the data
+str(PUDL)
+```
+
+```{r}
+# Explore the data
+glimpse(PUDL)
+```
+The data set is mostly clean, although it has a number of variables with significant missing values. The next actions should be made to fix this problem: 1) Remove any variables with a large number of missing values.
+```{r}
+# col names with missing values
+colnames(PUDL)[colSums(is.na(PUDL)) > 0]
+```
+
+```{r}
+# all missing values
+all <- PUDL %>% 
+  summarise_all(funs(sum(is.na(.)))) %>% 
+  gather(key = "variable", value = "missing_values") %>% 
+  filter(missing_values > 0) %>% 
+  arrange(desc(missing_values))
+```
+
+```{r}
+# remove the variables with missing values
+PUDL <- PUDL %>% 
+  select(-all$variable)
+```
+
+```{r}
+# check the data
+str(PUDL)
+```
+2.	Ensure that the variables have the right attributes. For example, numerical or categorical.
+```{r}
+# attributes
+sapply(PUDL, class)
+```
+
+3.	To ensure that both the data, and the analysis are unique to each student, randomly sample about 2% of your data using a random 4-digit number as the seed to sample the data. Use 75% of the sampled data as the training set, and the rest as the test set (if needed). This should yield a training set of about 9000 and a test of about 3000. 
+```{r}
+# set seed
+set.seed(1122)
+
+# sample the data
+sampled <- PUDL %>% 
+  sample_frac(0.02)
+
+# split the data
+train <- sampled %>% 
+  sample_frac(0.75)
+
+test <- sampled %>%
+    anti_join(train)
+```
+
+```{r}
+# check the data
+str(train)
+```
+```{r}
+str(test)
+```
+
+Visualizing the Data 
+```{r}
+# visualize the data scatterplot matrix
+numValues <- sapply(train, is.numeric)
+numValues
+```
+
+```{r}
+pairs(train[,numValues], pch = 19, cex = 0.5)
+```
+Clustering 
+K-means clustering
+```{r}
+# k-means clustering
+set.seed(9149)
+numValues <- sapply(train, is.numeric)
+kmeans <- kmeans(train[,numValues], centers = 3)
+kmeans
+```
+
+```{r}
+# aggregate the data
+aggregate(train[,numValues], by = list(kmeans$cluster), mean)
+```
+Visualizing the data 
+```{r}
+ggplot(train, aes(y = kmeans$cluster)) + 
+  geom_bar(aes(fill = kmeans$cluster), position = "dodge") + 
+  theme_economist() + 
+  theme(plot.title = element_text(hjust = 0.5))
+```
+
+KNN 
+```{r}
+# knn
+set.seed(1122)
+numValues <- sapply(train, is.numeric)
+library(class)
+```
+
+```{r}
+train1 <- train[,numValues]
+test1 <- test[,numValues]
+
+```
+
+```{r}
+knn <- knn(train1, test1, cl = kmeans$cluster, k = 3)
+knn
+```
+
+
+```{r}
+# segmentation
+kmeans <- kmeans(train[,numValues], centers = 3)
+kmeans
+```
+
+KNN and K Means
+```{r}
+# length of k means
+length(kmeans$cluster)
+# length of knn
+length(knn)
+```
+The k means and KNN are similar but the K means is better than KNN .
+
+```{r}
+view(PUDL)
+```
+
+
+
+
